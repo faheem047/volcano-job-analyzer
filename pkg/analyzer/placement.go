@@ -613,7 +613,7 @@ func (p *PlacementAnalyzer) calculateNetworkScore(profile ClusterProfile, analys
 	return math.Min(score, 1.0)
 }
 
-func (p *PlacementAnalyzer) calculateCostScore(profile ClusterProfile, analysis *JobAnalysis) float64 {
+func (p *PlacementAnalyzer) calculateCostScore(profile ClusterProfile, _ *JobAnalysis) float64 {
 	// Simple cost scoring - prefer lower cost
 	if profile.CostPerHour <= 1.0 {
 		return 1.0
