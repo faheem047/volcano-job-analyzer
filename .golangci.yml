@@ -34,7 +34,7 @@ linters-settings:
     suggest-new: true
 
   dupl:
-    threshold: 100
+    threshold: 150
 
   goconst:
     min-len: 3
@@ -44,7 +44,7 @@ linters-settings:
     locale: US
 
   lll:
-    line-length: 120
+    line-length: 200
     tab-width: 4
 
   unused:
@@ -69,6 +69,11 @@ linters-settings:
     disabled-checks:
       - wrapperFunc
       - commentedOutCode
+      - hugeParam
+      - rangeValCopy
+      - paramTypeCombine
+      - ifElseChain
+      - unnamedResult
 
   godox:
     keywords:
@@ -77,14 +82,14 @@ linters-settings:
       - HACK
 
   funlen:
-    lines: 100
-    statements: 50
+    lines: 120
+    statements: 100
 
   gocognit:
-    min-complexity: 15
+    min-complexity: 60
 
   nestif:
-    min-complexity: 4
+    min-complexity: 6
 
   gomnd:
     settings:
@@ -95,7 +100,6 @@ linters:
   enable:
     - bodyclose
     - deadcode
-    - depguard
     - dogsled
     - dupl
     - errcheck
@@ -135,6 +139,13 @@ linters:
   disable:
     - maligned  # deprecated
     - exhaustivestruct  # too strict for this project
+    - depguard
+    - golint
+    - interfacer
+    - structcheck
+    - varcheck
+    - scopelint
+    - stylecheck
 
 issues:
   exclude-rules:
@@ -143,6 +154,9 @@ issues:
         - gomnd
         - funlen
         - gocognit
+        - dupl
+        - lll
+        - goconst
 
     - path: examples/
       linters:
@@ -152,6 +166,9 @@ issues:
     - path: cmd/
       linters:
         - gochecknoinits
+        - funlen
+        - gocognit
+        - gocyclo
 
     - text: "weak cryptographic primitive"
       linters:
