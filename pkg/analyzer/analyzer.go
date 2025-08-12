@@ -81,7 +81,7 @@ func (a *Analyzer) analyzeTask(task volcanov1alpha1.TaskSpec, job *volcanov1alph
 
 	// Analyze task characteristics
 	taskAnalysis.Splittable = a.isTaskSplittable(taskAnalysis.TaskType, task)
-	taskAnalysis.EstimatedDuration = a.estimateTaskDuration(task, taskAnalysis.TaskType)
+    taskAnalysis.EstimatedDuration = a.estimateTaskDuration(taskAnalysis.TaskType)
 	taskAnalysis.ResourceEfficiency = a.calculateResourceEfficiency(taskAnalysis.Resources)
 	taskAnalysis.CommunicationPorts = a.extractCommunicationPorts(container)
 
@@ -552,7 +552,7 @@ func (a *Analyzer) isTaskSplittable(taskType TaskType, task volcanov1alpha1.Task
 	return true
 }
 
-func (a *Analyzer) estimateTaskDuration(task volcanov1alpha1.TaskSpec, taskType TaskType) time.Duration {
+func (a *Analyzer) estimateTaskDuration(taskType TaskType) time.Duration {
 	// Default duration estimates based on task type
 	defaultDurations := map[TaskType]time.Duration{
 		TaskTypeMaster:          2 * time.Hour,

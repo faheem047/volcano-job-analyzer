@@ -80,8 +80,7 @@ func (v *Validator) validateMetadata(job *volcanov1alpha1.Job) error {
 	}
 
 	// Validate name format
-	nameRegex := regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
-	if !nameRegex.MatchString(job.Name) {
+    if !nameRegex.MatchString(job.Name) {
 		return fmt.Errorf("job name '%s' is invalid. Must match regex: %s", job.Name, nameRegex.String())
 	}
 
@@ -100,13 +99,13 @@ func (v *Validator) validateMetadata(job *volcanov1alpha1.Job) error {
 	}
 
 	// Validate label values
-	if job.Labels != nil {
-		for key, value := range job.Labels {
-			if err := v.validateLabelValue(key, value); err != nil {
-				return fmt.Errorf("invalid label '%s': %w", key, err)
-			}
-		}
-	}
+    if job.Labels != nil {
+        for key, value := range job.Labels {
+            if err := v.validateLabelValue(value); err != nil {
+                return fmt.Errorf("invalid label '%s': %w", key, err)
+            }
+        }
+    }
 
 	return nil
 }
@@ -170,8 +169,7 @@ func (v *Validator) validateTask(task volcanov1alpha1.TaskSpec, index int) error
 		return fmt.Errorf("task[%d] name is required", index)
 	}
 
-	nameRegex := regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
-	if !nameRegex.MatchString(task.Name) {
+    if !nameRegex.MatchString(task.Name) {
 		return fmt.Errorf("task name '%s' is invalid", task.Name)
 	}
 
@@ -253,7 +251,7 @@ func (v *Validator) validateContainer(container corev1.Container, taskName strin
 	}
 
 	// Validate environment variables
-	if err := v.validateEnvironmentVariables(container.Env, container.Name); err != nil {
+    if err := v.validateEnvironmentVariables(container.Env); err != nil {
 		return fmt.Errorf("container '%s' environment validation failed: %w", container.Name, err)
 	}
 
@@ -373,8 +371,7 @@ func (v *Validator) validateSecurity(job *volcanov1alpha1.Job) error {
 
 		// Validate service account
 		if podSpec.ServiceAccountName != "" {
-			nameRegex := regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
-			if !nameRegex.MatchString(podSpec.ServiceAccountName) {
+            if !nameRegex.MatchString(podSpec.ServiceAccountName) {
 				return fmt.Errorf("invalid service account name '%s' in task '%s'", podSpec.ServiceAccountName, task.Name)
 			}
 		}
@@ -442,13 +439,13 @@ func (v *Validator) CheckBestPractices(job *volcanov1alpha1.Job) []string {
 
 // Helper validation functions
 
-func (v *Validator) validateLabelValue(key, value string) error {
+func (v *Validator) validateLabelValue(value string) error {
 	if len(value) > 63 {
 		return fmt.Errorf("label value too long (max 63 characters)")
 	}
 
 	validRegex := regexp.MustCompile(`^[a-zA-Z0-9]([-_a-zA-Z0-9]*[a-zA-Z0-9])?$`)
-	if value != "" && !validRegex.MatchString(value) {
+    if value != "" && !validRegex.MatchString(value) {
 		return fmt.Errorf("invalid label value format")
 	}
 
@@ -506,7 +503,7 @@ func (v *Validator) validateContainerResources(resources corev1.ResourceRequirem
 	return nil
 }
 
-func (v *Validator) validateEnvironmentVariables(envVars []corev1.EnvVar, containerName string) error {
+func (v *Validator) validateEnvironmentVariables(envVars []corev1.EnvVar) error {
 	envNames := make(map[string]bool)
 
 	for _, env := range envVars {
@@ -526,7 +523,7 @@ func (v *Validator) validateEnvironmentVariables(envVars []corev1.EnvVar, contai
 		}
 	}
 
-	return nil
+    return nil
 }
 
 func (v *Validator) validateContainerPorts(ports []corev1.ContainerPort, containerName string) error {
@@ -542,9 +539,8 @@ func (v *Validator) validateContainerPorts(ports []corev1.ContainerPort, contain
 			return fmt.Errorf("port %d out of valid range (1-65535)", port.ContainerPort)
 		}
 
-		if port.Name != "" {
-			nameRegex := regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
-			if !nameRegex.MatchString(port.Name) {
+        if port.Name != "" {
+            if !nameRegex.MatchString(port.Name) {
 				return fmt.Errorf("invalid port name '%s'", port.Name)
 			}
 		}
@@ -566,8 +562,7 @@ func (v *Validator) validateVolumes(volumes []corev1.Volume, taskName string) er
 		}
 		volumeNames[volume.Name] = true
 
-		nameRegex := regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
-		if !nameRegex.MatchString(volume.Name) {
+        if !nameRegex.MatchString(volume.Name) {
 			return fmt.Errorf("invalid volume name '%s' in task '%s'", volume.Name, taskName)
 		}
 	}
