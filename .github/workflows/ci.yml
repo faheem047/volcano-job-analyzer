@@ -27,7 +27,7 @@ jobs:
         go-version: ${{ env.GO_VERSION }}
 
     - name: Cache Go modules
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cache/go-build
@@ -126,11 +126,11 @@ jobs:
         if [ "${{ matrix.os }}" = "windows" ]; then
           BINARY_NAME="${BINARY_NAME}.exe"
         fi
-        go build -ldflags="-w -s -X main.version=${GITHUB_REF#refs/tags/} -X main.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        go build -ldflags="-w -s -X main.buildVersion=${GITHUB_REF#refs/tags/} -X main.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
           -o build/${BINARY_NAME} .
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: volcano-job-analyzer-${{ matrix.os }}-${{ matrix.arch }}
         path: build/volcano-job-analyzer-*
@@ -203,7 +203,7 @@ jobs:
         kubectl wait --for=condition=ready pod -l app=volcano-controller -n volcano-system --timeout=300s
 
     - name: Download build artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: volcano-job-analyzer-linux-amd64
         path: build/
@@ -228,7 +228,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: artifacts/
 
