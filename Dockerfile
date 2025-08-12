@@ -18,7 +18,7 @@ COPY . .
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags="-w -s -X main.version=${VERSION:-dev} -X main.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    -ldflags="-w -s -X main.buildVersion=${VERSION:-dev} -X main.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     -o volcano-job-analyzer .
 
 # Final stage
