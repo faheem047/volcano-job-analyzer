@@ -7,6 +7,7 @@ import (
     "os"
     "strconv"
     "time"
+    "strings"
 
     "volcano-job-analyzer/pkg/analyzer"
     "volcano-job-analyzer/pkg/parser"
@@ -24,7 +25,7 @@ func Execute(ctx context.Context, args []string, config *utils.Config, logger *z
     }
 
     jobFile := args[0]
-    logger.Info("Starting job analysis", "file", jobFile, "format", outputFormat)
+    logger.Info("Starting job analysis", zap.String("file", jobFile), zap.String("format", outputFormat))
 
     // Parse the job
     job, err := parser.ParseVolcanoJobFromFile(jobFile)
@@ -53,7 +54,7 @@ func Execute(ctx context.Context, args []string, config *utils.Config, logger *z
     if config.ClusterProfilesPath != "" {
         clusterProfiles, err := loadClusterProfiles(config.ClusterProfilesPath)
         if err != nil {
-            logger.Warn("Failed to load cluster profiles", "error", err)
+            logger.Warn("Failed to load cluster profiles", zap.Error(err))
         } else {
             placementConfig := &analyzer.PlacementConfig{
                 MaxClusters:                   config.Placement.MaxClusters,
@@ -68,7 +69,7 @@ func Execute(ctx context.Context, args []string, config *utils.Config, logger *z
             placementAnalyzer := analyzer.NewPlacementAnalyzer(placementConfig)
             placementStrategy, err = placementAnalyzer.GeneratePlacementStrategy(analysis, clusterProfiles)
             if err != nil {
-                logger.Warn("Failed to generate placement strategy", "error", err)
+                logger.Warn("Failed to generate placement strategy", zap.Error(err))
             }
         }
     }
@@ -93,7 +94,7 @@ func Execute(ctx context.Context, args []string, config *utils.Config, logger *z
 func outputTable(analysis *analyzer.JobAnalysis, placement *analyzer.PlacementStrategy, optimization *analyzer.OptimizationResult) error {
     // Job Overview Table
     fmt.Println("Job Analysis:", analysis.JobName)
-    fmt.Println("=" * 50)
+    fmt.Println(strings.Repeat("=", 50))
 
     overviewTable := tablewriter.NewWriter(os.Stdout)
     overviewTable.SetHeader([]string{"Metric", "Value"})

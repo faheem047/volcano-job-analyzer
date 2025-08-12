@@ -1,12 +1,12 @@
 package parser
 
 import (
+    "encoding/json"
     "fmt"
     "io/ioutil"
     
     volcanov1alpha1 "volcano.sh/apis/pkg/apis/batch/v1alpha1"
     "sigs.k8s.io/yaml"
-    "k8s.io/apimachinery/pkg/runtime"
     "k8s.io/apimachinery/pkg/util/validation"
 )
 
@@ -198,5 +198,5 @@ func ConvertToYAML(job *volcanov1alpha1.Job) ([]byte, error) {
 
 // ConvertToJSON converts a Volcano Job to JSON
 func ConvertToJSON(job *volcanov1alpha1.Job) ([]byte, error) {
-    return runtime.Encode(json.Encoder, job)
+    return json.Marshal(job)
 }

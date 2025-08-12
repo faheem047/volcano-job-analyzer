@@ -5,7 +5,7 @@ import (
     "strings"
 
     "go.uber.org/zap"
-    "go.uber.org/zap"
+    "go.uber.org/zap/zapcore"
 )
 
 // NewLogger creates a new structured logger
@@ -34,8 +34,8 @@ func NewLogger(level string) (*zap.Logger, error) {
     config.EncoderConfig.TimeKey = "time"
     config.EncoderConfig.LevelKey = "level"
     config.EncoderConfig.MessageKey = "message"
-    config.EncoderConfig.EncodeTime = zap.ISO8601TimeEncoder
-    config.EncoderConfig.EncodeLevel = zap.CapitalColorLevelEncoder
+    config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+    config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 
     logger, err := config.Build()
     if err != nil {

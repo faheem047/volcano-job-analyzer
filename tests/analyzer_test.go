@@ -5,7 +5,6 @@ import (
     "time"
 
     "volcano-job-analyzer/pkg/analyzer"
-    "volcano-job-analyzer/pkg/parser"
 
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"

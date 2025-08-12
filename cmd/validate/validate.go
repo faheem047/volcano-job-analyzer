@@ -17,7 +17,7 @@ func Execute(ctx context.Context, args []string, config *utils.Config, logger *z
     }
 
     jobFile := args[0]
-    logger.Info("Validating job specification", "file", jobFile)
+    logger.Info("Validating job specification", zap.String("file", jobFile))
 
     // Parse and validate the job
     validator := parser.NewValidator()
@@ -29,7 +29,7 @@ func Execute(ctx context.Context, args []string, config *utils.Config, logger *z
 
     // Validate the job specification
     if err := validator.ValidateJob(job); err != nil {
-        logger.Error("Job validation failed", "error", err)
+        logger.Error("Job validation failed", zap.Error(err))
         return fmt.Errorf("validation failed: %w", err)
     }
 

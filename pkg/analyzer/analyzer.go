@@ -140,7 +140,8 @@ func (a *Analyzer) classifyTaskType(taskName string) TaskType {
     
     patterns := map[TaskType][]string{
         TaskTypeMaster:          {"master", "chief", "coordinator", "leader"},
-        TaskTypeWorker:          {"worker", "executor", "slave", "node"},
+        TaskTypeWorker:          {"worker", "slave", "node"},
+        TaskTypeExecutor:        {"executor"},
         TaskTypeParameterServer: {"ps", "parameter-server", "param-server"},
         TaskTypeDriver:          {"driver", "client"},
         TaskTypeScheduler:       {"scheduler", "dispatcher"},
@@ -211,31 +212,65 @@ func (a *Analyzer) calculateAggregateResources(analysis *JobAnalysis) {
 
     for _, task := range analysis.Tasks {
         // Multiply task resources by replica count
-        cpuPerTask := task.Resources.CPU.DeepCopy()
-        cpuPerTask.Mul(int64(task.Replicas))
-        totalResources.CPU.Add(cpuPerTask)
+        cpuTotal := resource.NewMilliQuantity(0, resource.DecimalSI)
+        if !task.Resources.CPU.IsZero() {
+            cpuTotal.Add(task.Resources.CPU)
+        }
+        if task.Replicas > 1 {
+            // Quantity lacks Mul in this k8s version; add repeatedly
+            for i := int32(1); i < task.Replicas; i++ {
+                cpuTotal.Add(task.Resources.CPU)
+            }
+        }
+        totalResources.CPU.Add(*cpuTotal)
 
-        memoryPerTask := task.Resources.Memory.DeepCopy()
-        memoryPerTask.Mul(int64(task.Replicas))
-        totalResources.Memory.Add(memoryPerTask)
+        memTotal := resource.NewQuantity(0, resource.BinarySI)
+        if !task.Resources.Memory.IsZero() {
+            memTotal.Add(task.Resources.Memory)
+        }
+        if task.Replicas > 1 {
+            for i := int32(1); i < task.Replicas; i++ {
+                memTotal.Add(task.Resources.Memory)
+            }
+        }
+        totalResources.Memory.Add(*memTotal)
 
-        gpuPerTask := task.Resources.GPU.DeepCopy()
-        gpuPerTask.Mul(int64(task.Replicas))
-        totalResources.GPU.Add(gpuPerTask)
+        gpuTotal := resource.NewQuantity(0, resource.DecimalSI)
+        if !task.Resources.GPU.IsZero() {
+            gpuTotal.Add(task.Resources.GPU)
+        }
+        if task.Replicas > 1 {
+            for i := int32(1); i < task.Replicas; i++ {
+                gpuTotal.Add(task.Resources.GPU)
+            }
+        }
+        totalResources.GPU.Add(*gpuTotal)
 
-        storagePerTask := task.Resources.Storage.DeepCopy()
-        storagePerTask.Mul(int64(task.Replicas))
-        totalResources.Storage.Add(storagePerTask)
+        storageTotal := resource.NewQuantity(0, resource.BinarySI)
+        if !task.Resources.Storage.IsZero() {
+            storageTotal.Add(task.Resources.Storage)
+        }
+        if task.Replicas > 1 {
+            for i := int32(1); i < task.Replicas; i++ {
+                storageTotal.Add(task.Resources.Storage)
+            }
+        }
+        totalResources.Storage.Add(*storageTotal)
 
         // Aggregate custom resources
         for resourceName, quantity := range task.Resources.CustomResources {
-            customPerTask := quantity.DeepCopy()
-            customPerTask.Mul(int64(task.Replicas))
+            total := resource.NewQuantity(0, quantity.Format)
+            total.Add(quantity)
+            if task.Replicas > 1 {
+                for i := int32(1); i < task.Replicas; i++ {
+                    total.Add(quantity)
+                }
+            }
             if existing, ok := totalResources.CustomResources[resourceName]; ok {
-                existing.Add(customPerTask)
+                existing.Add(*total)
                 totalResources.CustomResources[resourceName] = existing
             } else {
-                totalResources.CustomResources[resourceName] = customPerTask
+                totalResources.CustomResources[resourceName] = *total
             }
         }
     }

@@ -1,10 +1,8 @@
 package analyzer
 
 import (
-    "fmt"
     "time"
-    
-    volcanov1alpha1 "volcano.sh/apis/pkg/apis/batch/v1alpha1"
+
     corev1 "k8s.io/api/core/v1"
     "k8s.io/apimachinery/pkg/api/resource"
 )
@@ -151,7 +149,7 @@ type NetworkPort struct {
 
 // SecurityConstraints defines security-related requirements
 type SecurityConstraints struct {
-    RequiredSecurityContext *corev1.SecurityContext `json:"requiredSecurityContext,omitempty"`
+    RequiredSecurityContext *corev1.PodSecurityContext `json:"requiredSecurityContext,omitempty"`
     NetworkPolicies         []string                `json:"networkPolicies"`
     SecretRequirements      []string                `json:"secretRequirements"`
     ServiceAccountName      string                  `json:"serviceAccountName"`

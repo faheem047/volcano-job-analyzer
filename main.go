@@ -11,6 +11,8 @@ import (
     "volcano-job-analyzer/cmd/analyze"
     "volcano-job-analyzer/cmd/validate"
     "volcano-job-analyzer/pkg/utils"
+
+    "go.uber.org/zap"
 )
 
 var (
@@ -42,7 +44,7 @@ func main() {
     // Load configuration
     config, err := utils.LoadConfig(*configPath)
     if err != nil {
-        logger.Error("Failed to load configuration", "error", err, "path", *configPath)
+        logger.Error("Failed to load configuration", zap.Error(err), zap.String("path", *configPath))
         os.Exit(1)
     }
 
@@ -57,16 +59,16 @@ func main() {
     switch command {
     case "analyze":
         if err := analyze.Execute(ctx, flag.Args()[1:], config, logger, *outputFormat); err != nil {
-            logger.Error("Analysis failed", "error", err)
+            logger.Error("Analysis failed", zap.Error(err))
             os.Exit(1)
         }
     case "validate":
         if err := validate.Execute(ctx, flag.Args()[1:], config, logger); err != nil {
-            logger.Error("Validation failed", "error", err)
+            logger.Error("Validation failed", zap.Error(err))
             os.Exit(1)
         }
     default:
-        logger.Error("Unknown command", "command", command)
+        logger.Error("Unknown command", zap.String("command", command))
         printUsage()
         os.Exit(1)
     }

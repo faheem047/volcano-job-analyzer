@@ -5,6 +5,8 @@ import (
     "math"
     "sort"
     "time"
+
+    "k8s.io/apimachinery/pkg/api/resource"
 )
 
 // PlacementAnalyzer provides intelligent cluster placement recommendations
@@ -239,7 +241,6 @@ func (p *PlacementAnalyzer) generateAntiAffinityRules(analysis *JobAnalysis) []A
 
 // generateResourceDistribution creates optimal resource allocation plan
 func (p *PlacementAnalyzer) generateResourceDistribution(analysis *JobAnalysis, profiles []ClusterProfile, strategy *PlacementStrategy) (map[string]ResourceAllocation, error) {
-    distribution := make(map[string]ResourceAllocation)
 
     // Sort clusters by capacity and suitability
     rankedClusters := p.rankClusters(profiles, analysis)

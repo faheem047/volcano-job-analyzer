@@ -275,21 +275,36 @@ func (v *Validator) validateResourceRequirements(job *volcanov1alpha1.Job) error
         for _, container := range task.Template.Spec.Containers {
             if container.Resources.Requests != nil {
                 if cpu, ok := container.Resources.Requests[corev1.ResourceCPU]; ok {
-                    cpuPerTask := cpu.DeepCopy()
-                    cpuPerTask.Mul(int64(task.Replicas))
-                    totalCPU.Add(cpuPerTask)
+                    total := resource.NewMilliQuantity(0, resource.DecimalSI)
+                    total.Add(cpu)
+                    if task.Replicas > 1 {
+                        for i := int32(1); i < task.Replicas; i++ {
+                            total.Add(cpu)
+                        }
+                    }
+                    totalCPU.Add(*total)
                 }
 
                 if memory, ok := container.Resources.Requests[corev1.ResourceMemory]; ok {
-                    memoryPerTask := memory.DeepCopy()
-                    memoryPerTask.Mul(int64(task.Replicas))
-                    totalMemory.Add(memoryPerTask)
+                    total := resource.NewQuantity(0, resource.BinarySI)
+                    total.Add(memory)
+                    if task.Replicas > 1 {
+                        for i := int32(1); i < task.Replicas; i++ {
+                            total.Add(memory)
+                        }
+                    }
+                    totalMemory.Add(*total)
                 }
 
                 if gpu, ok := container.Resources.Requests["nvidia.com/gpu"]; ok {
-                    gpuPerTask := gpu.DeepCopy()
-                    gpuPerTask.Mul(int64(task.Replicas))
-                    totalGPU.Add(gpuPerTask)
+                    total := resource.NewQuantity(0, resource.DecimalSI)
+                    total.Add(gpu)
+                    if task.Replicas > 1 {
+                        for i := int32(1); i < task.Replicas; i++ {
+                            total.Add(gpu)
+                        }
+                    }
+                    totalGPU.Add(*total)
                 }
             }
         }
