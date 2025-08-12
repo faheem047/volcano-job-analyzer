@@ -52,10 +52,8 @@ func Execute(ctx context.Context, args []string, config *utils.Config, logger *z
 	// Generate placement strategy if cluster profiles are available
 	var placementStrategy *analyzer.PlacementStrategy
 	if config.ClusterProfilesPath != "" {
-        clusterProfiles, err := loadClusterProfiles()
-		if err != nil {
-			logger.Warn("Failed to load cluster profiles", zap.Error(err))
-		} else {
+		clusterProfiles := loadClusterProfiles()
+		{
 			placementConfig := &analyzer.PlacementConfig{
 				MaxClusters:                   config.Placement.MaxClusters,
 				MinClusterUtilization:         config.Placement.MinClusterUtilization,
@@ -261,7 +259,7 @@ func outputYAML(analysis *analyzer.JobAnalysis, placement *analyzer.PlacementStr
 	return nil
 }
 
-func loadClusterProfiles() ([]analyzer.ClusterProfile, error) {
+func loadClusterProfiles() []analyzer.ClusterProfile {
 	// Implementation to load cluster profiles from file
 	// This would typically read from a YAML or JSON file
 	return []analyzer.ClusterProfile{
@@ -287,5 +285,5 @@ func loadClusterProfiles() ([]analyzer.ClusterProfile, error) {
 			GPUTypes:         []string{"nvidia-tesla-v100"},
 			Zone:             "us-west-2a",
 		},
-    }, nil
+	}
 }

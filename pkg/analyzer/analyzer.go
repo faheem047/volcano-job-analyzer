@@ -81,7 +81,7 @@ func (a *Analyzer) analyzeTask(task volcanov1alpha1.TaskSpec, job *volcanov1alph
 
 	// Analyze task characteristics
 	taskAnalysis.Splittable = a.isTaskSplittable(taskAnalysis.TaskType, task)
-    taskAnalysis.EstimatedDuration = a.estimateTaskDuration(taskAnalysis.TaskType)
+	taskAnalysis.EstimatedDuration = a.estimateTaskDuration(taskAnalysis.TaskType)
 	taskAnalysis.ResourceEfficiency = a.calculateResourceEfficiency(taskAnalysis.Resources)
 	taskAnalysis.CommunicationPorts = a.extractCommunicationPorts(container)
 

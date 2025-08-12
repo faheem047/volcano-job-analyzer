@@ -302,7 +302,7 @@ func (p *PlacementAnalyzer) calculateClusterScore(profile ClusterProfile, analys
 	score += networkScore * p.config.NetworkLatencyWeight
 
 	// Cost efficiency score
-    costScore := p.calculateCostScore(profile)
+	costScore := p.calculateCostScore(profile)
 	score += costScore * p.config.CostOptimizationWeight
 
 	// Performance optimization score
@@ -619,7 +619,7 @@ func (p *PlacementAnalyzer) calculateCostScore(profile ClusterProfile) float64 {
 		return 1.0
 	} else if profile.CostPerHour <= 5.0 {
 		return 0.8
-    } else if profile.CostPerHour <= 10.0 {
+	} else if profile.CostPerHour <= 10.0 {
 		return 0.6
 	} else {
 		return 0.4
