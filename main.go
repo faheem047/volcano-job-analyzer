@@ -20,7 +20,7 @@ var (
 	logLevel     = flag.String("log-level", "info", "Log level (debug, info, warn, error)")
 	outputFormat = flag.String("output", "table", "Output format (table, json, yaml)")
 	version      = flag.Bool("version", false, "Show version information")
-	
+
 	// These variables will be set by the linker during build
 	buildVersion = "dev"
 	buildDate    = "unknown"
