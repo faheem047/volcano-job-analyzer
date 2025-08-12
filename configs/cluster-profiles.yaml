@@ -1,0 +1,104 @@
+clusters:
+  - name: gpu-cluster-us-east
+    availableResources:
+      cpu: 1000000m      # 1000 CPUs
+      memory: 2048Gi     # 2TB RAM
+      gpu: 32            # 32 GPUs
+      storage: 10Ti      # 10TB storage
+    networkBandwidth: 10000  # 10 Gbps
+    networkLatency: 5ms
+    costPerHour: 2.5
+    gpuTypes:
+      - nvidia-tesla-v100
+      - nvidia-tesla-a100
+    specialCapabilities:
+      - ml-optimized
+      - high-memory
+      - nvlink
+    zone: us-east-1a
+    labels:
+      topology.kubernetes.io/zone: us-east-1a
+      node.kubernetes.io/instance-type: p3.16xlarge
+      accelerator: nvidia-tesla-v100
+
+  - name: gpu-cluster-us-west
+    availableResources:
+      cpu: 800000m       # 800 CPUs
+      memory: 1536Gi     # 1.5TB RAM
+      gpu: 24            # 24 GPUs
+      storage: 8Ti       # 8TB storage
+    networkBandwidth: 10000  # 10 Gbps
+    networkLatency: 8ms
+    costPerHour: 2.8
+    gpuTypes:
+      - nvidia-tesla-v100
+      - nvidia-tesla-a100
+    specialCapabilities:
+      - ml-optimized
+      - high-bandwidth
+    zone: us-west-2a
+    labels:
+      topology.kubernetes.io/zone: us-west-2a
+      node.kubernetes.io/instance-type: p3.8xlarge
+      accelerator: nvidia-tesla-v100
+
+  - name: cpu-cluster-europe
+    availableResources:
+      cpu: 2000000m      # 2000 CPUs
+      memory: 4096Gi     # 4TB RAM
+      gpu: 0             # No GPUs
+      storage: 20Ti      # 20TB storage
+    networkBandwidth: 25000  # 25 Gbps
+    networkLatency: 15ms
+    costPerHour: 1.2
+    gpuTypes: []
+    specialCapabilities:
+      - big-data-optimized
+      - high-memory
+      - high-bandwidth
+    zone: eu-central-1a
+    labels:
+      topology.kubernetes.io/zone: eu-central-1a
+      node.kubernetes.io/instance-type: c5.24xlarge
+      workload-type: cpu-intensive
+
+  - name: mixed-cluster-asia
+    availableResources:
+      cpu: 600000m       # 600 CPUs
+      memory: 1024Gi     # 1TB RAM
+      gpu: 16            # 16 GPUs
+      storage: 5Ti       # 5TB storage
+    networkBandwidth: 5000   # 5 Gbps
+    networkLatency: 20ms
+    costPerHour: 2.0
+    gpuTypes:
+      - nvidia-tesla-t4
+    specialCapabilities:
+      - cost-optimized
+      - moderate-performance
+    zone: ap-southeast-1a
+    labels:
+      topology.kubernetes.io/zone: ap-southeast-1a
+      node.kubernetes.io/instance-type: g4dn.12xlarge
+      accelerator: nvidia-tesla-t4
+
+  - name: edge-cluster-us-central
+    availableResources:
+      cpu: 200000m       # 200 CPUs
+      memory: 512Gi      # 512GB RAM
+      gpu: 8             # 8 GPUs
+      storage: 2Ti       # 2TB storage
+    networkBandwidth: 1000   # 1 Gbps
+    networkLatency: 3ms
+    costPerHour: 1.8
+    gpuTypes:
+      - nvidia-tesla-t4
+    specialCapabilities:
+      - edge-optimized
+      - low-latency
+      - local-storage
+    zone: us-central-1a
+    labels:
+      topology.kubernetes.io/zone: us-central-1a
+      node.kubernetes.io/instance-type: g4dn.4xlarge
+      deployment-type: edge

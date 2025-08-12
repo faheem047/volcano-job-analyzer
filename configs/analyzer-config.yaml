@@ -1,0 +1,28 @@
+analyzer:
+  enableAdvancedMetrics: true
+  networkLatencyThreshold: 10ms
+  resourceEfficiencyThreshold: 0.8
+  defaultJobTimeout: 2h
+
+placement:
+  maxClusters: 5
+  minClusterUtilization: 0.2
+  maxClusterUtilization: 0.8
+  networkLatencyWeight: 0.3
+  resourceAffinityWeight: 0.4
+  costOptimizationWeight: 0.2
+  performanceOptimizationWeight: 0.1
+
+logging:
+  level: info
+  format: console
+
+clusterProfilesPath: "configs/cluster-profiles.yaml"
+
+validation:
+  strictMode: false
+  allowEmptyResourceLimits: true
+  maxTasksPerJob: 20
+  maxReplicasPerTask: 100
+  requiredLabels: []
+  forbiddenImages: []

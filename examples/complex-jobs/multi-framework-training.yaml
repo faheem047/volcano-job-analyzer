@@ -1,0 +1,389 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: multi-framework-ml-pipeline
+  namespace: ml-research
+  labels:
+    app: ml-pipeline
+    pipeline-type: multi-framework
+    research-project: nlp-vision-fusion
+  annotations:
+    volcano.sh/framework: multi
+    volcano.sh/job-type: research-pipeline
+    volcano.sh/estimated-duration: "4h"
+    volcano.sh/priority: high
+spec:
+  schedulerName: volcano
+  queue: research-queue
+  minAvailable: 12
+  ttlSecondsAfterFinished: 3600
+  tasks:
+  # Data Preprocessing with Spark
+  - name: data-preprocessor
+    replicas: 1
+    template:
+      metadata:
+        labels:
+          component: data-preprocessing
+          framework: spark
+      spec:
+        restartPolicy: Never
+        initContainers:
+        - name: data-validator
+          image: python:3.9-slim
+          command: ["python", "/scripts/validate_data.py"]
+          volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+          - name: raw-data
+            mountPath: /raw-data
+        containers:
+        - name: spark-preprocessor
+          image: apache/spark:3.4.0-python3
+          command: ["/opt/spark/bin/spark-submit"]
+          args:
+            - "--master"
+            - "local[4]"
+            - "--name"
+            - "data-preprocessor"
+            - "/workspace/preprocess.py"
+          env:
+          - name: INPUT_PATH
+            value: "/raw-data"
+          - name: OUTPUT_PATH
+            value: "/processed-data"
+          - name: SPARK_DRIVER_MEMORY
+            value: "4g"
+          - name: SPARK_EXECUTOR_MEMORY
+            value: "4g"
+          resources:
+            requests:
+              cpu: 4000m
+              memory: 8Gi
+            limits:
+              cpu: 4000m
+              memory: 8Gi
+          volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: raw-data
+            mountPath: /raw-data
+          - name: processed-data
+            mountPath: /processed-data
+        volumes:
+        - name: scripts
+          configMap:
+            name: preprocessing-scripts
+        - name: workspace
+          configMap:
+            name: spark-preprocessing-code
+        - name: raw-data
+          persistentVolumeClaim:
+            claimName: raw-data-pvc
+        - name: processed-data
+          persistentVolumeClaim:
+            claimName: processed-data-pvc
+
+  # Vision Model Training with PyTorch
+  - name: vision-trainer
+    replicas: 2
+    template:
+      metadata:
+        labels:
+          component: vision-training
+          framework: pytorch
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: pytorch-vision
+          image: pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime
+          command: ["python"]
+          args:
+            - "/workspace/train_vision.py"
+            - "--data-path=/processed-data/vision"
+            - "--model-output=/models/vision"
+            - "--epochs=50"
+            - "--batch-size=32"
+            - "--distributed"
+            - "--world-size=2"
+          env:
+          - name: MASTER_ADDR
+            value: "multi-framework-ml-pipeline-vision-trainer-0"
+          - name: MASTER_PORT
+            value: "29500"
+          - name: WORLD_SIZE
+            value: "2"
+          - name: CUDA_VISIBLE_DEVICES
+            value: "0"
+          ports:
+          - containerPort: 29500
+            name: pytorch-port
+          resources:
+            requests:
+              cpu: 6000m
+              memory: 16Gi
+              nvidia.com/gpu: 2
+            limits:
+              cpu: 6000m
+              memory: 16Gi
+              nvidia.com/gpu: 2
+          volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: processed-data
+            mountPath: /processed-data
+          - name: models
+            mountPath: /models
+        volumes:
+        - name: workspace
+          configMap:
+            name: pytorch-vision-code
+        - name: processed-data
+          persistentVolumeClaim:
+            claimName: processed-data-pvc
+        - name: models
+          persistentVolumeClaim:
+            claimName: models-pvc
+
+  # NLP Model Training with TensorFlow
+  - name: nlp-chief
+    replicas: 1
+    template:
+      metadata:
+        labels:
+          component: nlp-training
+          framework: tensorflow
+          role: chief
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: tensorflow-nlp
+          image: tensorflow/tensorflow:2.12.0-gpu
+          command: ["python"]
+          args:
+            - "/workspace/train_nlp.py"
+            - "--data-path=/processed-data/text"
+            - "--model-output=/models/nlp"
+            - "--epochs=30"
+            - "--batch-size=64"
+          env:
+          - name: TF_CONFIG
+            value: |
+              {
+                "cluster": {
+                  "chief": ["multi-framework-ml-pipeline-nlp-chief-0:2222"],
+                  "worker": ["multi-framework-ml-pipeline-nlp-worker-0:2222", "multi-framework-ml-pipeline-nlp-worker-1:2222"]
+                },
+                "task": {"type": "chief", "index": 0}
+              }
+          - name: CUDA_VISIBLE_DEVICES
+            value: "0"
+          ports:
+          - containerPort: 2222
+            name: tf-port
+          resources:
+            requests:
+              cpu: 4000m
+              memory: 12Gi
+              nvidia.com/gpu: 1
+            limits:
+              cpu: 4000m
+              memory: 12Gi
+              nvidia.com/gpu: 1
+          volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: processed-data
+            mountPath: /processed-data
+          - name: models
+            mountPath: /models
+        volumes:
+        - name: workspace
+          configMap:
+            name: tensorflow-nlp-code
+        - name: processed-data
+          persistentVolumeClaim:
+            claimName: processed-data-pvc
+        - name: models
+          persistentVolumeClaim:
+            claimName: models-pvc
+
+  - name: nlp-worker
+    replicas: 2
+    template:
+      metadata:
+        labels:
+          component: nlp-training
+          framework: tensorflow
+          role: worker
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: tensorflow-nlp
+          image: tensorflow/tensorflow:2.12.0-gpu
+          command: ["python"]
+          args:
+            - "/workspace/train_nlp.py"
+            - "--data-path=/processed-data/text"
+            - "--model-output=/models/nlp"
+            - "--epochs=30"
+            - "--batch-size=64"
+          env:
+          - name: TF_CONFIG
+            value: |
+              {
+                "cluster": {
+                  "chief": ["multi-framework-ml-pipeline-nlp-chief-0:2222"],
+                  "worker": ["multi-framework-ml-pipeline-nlp-worker-0:2222", "multi-framework-ml-pipeline-nlp-worker-1:2222"]
+                },
+                "task": {"type": "worker", "index": 0}
+              }
+          - name: CUDA_VISIBLE_DEVICES
+            value: "0"
+          ports:
+          - containerPort: 2222
+            name: tf-port
+          resources:
+            requests:
+              cpu: 4000m
+              memory: 8Gi
+              nvidia.com/gpu: 1
+            limits:
+              cpu: 4000m
+              memory: 8Gi
+              nvidia.com/gpu: 1
+          volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: processed-data
+            mountPath: /processed-data
+          - name: models
+            mountPath: /models
+        volumes:
+        - name: workspace
+          configMap:
+            name: tensorflow-nlp-code
+        - name: processed-data
+          persistentVolumeClaim:
+            claimName: processed-data-pvc
+        - name: models
+          persistentVolumeClaim:
+            claimName: models-pvc
+
+  # Model Fusion and Evaluation
+  - name: fusion-evaluator
+    replicas: 1
+    template:
+      metadata:
+        labels:
+          component: fusion-evaluation
+          framework: pytorch
+      spec:
+        restartPolicy: Never
+        initContainers:
+        - name: model-validator
+          image: python:3.9-slim
+          command: ["python", "/scripts/validate_models.py"]
+          volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+          - name: models
+            mountPath: /models
+        containers:
+        - name: fusion-evaluator
+          image: pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime
+          command: ["python"]
+          args:
+            - "/workspace/fusion_evaluation.py"
+            - "--vision-model=/models/vision/best_model.pth"
+            - "--nlp-model=/models/nlp/saved_model"
+            - "--test-data=/processed-data/test"
+            - "--output=/results"
+          env:
+          - name: CUDA_VISIBLE_DEVICES
+            value: "0,1"
+          - name: PYTHONPATH
+            value: "/workspace:/workspace/src"
+          resources:
+            requests:
+              cpu: 8000m
+              memory: 24Gi
+              nvidia.com/gpu: 2
+            limits:
+              cpu: 8000m
+              memory: 24Gi
+              nvidia.com/gpu: 2
+          volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: models
+            mountPath: /models
+          - name: processed-data
+            mountPath: /processed-data
+          - name: results
+            mountPath: /results
+        volumes:
+        - name: scripts
+          configMap:
+            name: evaluation-scripts
+        - name: workspace
+          configMap:
+            name: fusion-evaluation-code
+        - name: models
+          persistentVolumeClaim:
+            claimName: models-pvc
+        - name: processed-data
+          persistentVolumeClaim:
+            claimName: processed-data-pvc
+        - name: results
+          persistentVolumeClaim:
+            claimName: results-pvc
+
+  # Results Aggregation with Ray
+  - name: results-aggregator
+    replicas: 1
+    template:
+      metadata:
+        labels:
+          component: results-aggregation
+          framework: ray
+      spec:
+        restartPolicy: Never
+        containers:
+        - name: ray-aggregator
+          image: rayproject/ray:2.4.0-py39
+          command: ["python"]
+          args:
+            - "/workspace/aggregate_results.py"
+            - "--results-path=/results"
+            - "--output-path=/final-results"
+            - "--report-format=json,html"
+          env:
+          - name: RAY_DISABLE_IMPORT_WARNING
+            value: "1"
+          - name: RAY_OBJECT_STORE_ALLOW_SLOW_STORAGE
+            value: "1"
+          resources:
+            requests:
+              cpu: 4000m
+              memory: 8Gi
+            limits:
+              cpu: 4000m
+              memory: 8Gi
+          volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: results
+            mountPath: /results
+          - name: final-results
+            mountPath: /final-results
+        volumes:
+        - name: workspace
+          configMap:
+            name: ray-aggregation-code
+        - name: results
+          persistentVolumeClaim:
+            claimName: results-pvc
+        - name: final-results
+          persistentVolumeClaim:
+            claimName: final-results-pvc

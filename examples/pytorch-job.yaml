@@ -1,0 +1,114 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: pytorch-distributed-training
+  namespace: ml-training
+  labels:
+    app: pytorch-training
+    framework: pytorch
+    version: "1.13"
+  annotations:
+    volcano.sh/framework: pytorch
+    volcano.sh/job-type: distributed-training
+spec:
+  schedulerName: volcano
+  queue: gpu-queue
+  minAvailable: 5
+  tasks:
+  - name: master
+    replicas: 1
+    template:
+      metadata:
+        labels:
+          app: pytorch-training
+          role: master
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: pytorch
+          image: pytorch/pytorch:1.13.1-cuda11.6-cudnn8-runtime
+          command: ["python"]
+          args:
+            - "/workspace/train.py"
+            - "--master-addr=$(MASTER_ADDR)"
+            - "--master-port=23456"
+            - "--world-size=5"
+            - "--rank=0"
+          env:
+          - name: MASTER_ADDR
+            value: "pytorch-distributed-training-master-0"
+          - name: MASTER_PORT
+            value: "23456"
+          - name: WORLD_SIZE
+            value: "5"
+          - name: RANK
+            value: "0"
+          ports:
+          - containerPort: 23456
+            name: master-port
+            protocol: TCP
+          resources:
+            requests:
+              cpu: 4000m
+              memory: 8Gi
+            limits:
+              cpu: 4000m
+              memory: 8Gi
+          volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: data
+            mountPath: /data
+        volumes:
+        - name: workspace
+          configMap:
+            name: pytorch-training-code
+        - name: data
+          persistentVolumeClaim:
+            claimName: training-data-pvc
+  - name: worker
+    replicas: 4
+    template:
+      metadata:
+        labels:
+          app: pytorch-training
+          role: worker
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: pytorch
+          image: pytorch/pytorch:1.13.1-cuda11.6-cudnn8-runtime
+          command: ["python"]
+          args:
+            - "/workspace/train.py"
+            - "--master-addr=$(MASTER_ADDR)"
+            - "--master-port=23456"
+            - "--world-size=5"
+          env:
+          - name: MASTER_ADDR
+            value: "pytorch-distributed-training-master-0"
+          - name: MASTER_PORT
+            value: "23456"
+          - name: WORLD_SIZE
+            value: "5"
+          resources:
+            requests:
+              cpu: 2000m
+              memory: 4Gi
+              nvidia.com/gpu: 1
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+              nvidia.com/gpu: 1
+          volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: data
+            mountPath: /data
+        volumes:
+        - name: workspace
+          configMap:
+            name: pytorch-training-code
+        - name: data
+          persistentVolumeClaim:
+            claimName: training-data-pvc

@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # Main analyzer service
+  analyzer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: volcano-job-analyzer
+    volumes:
+      - ./examples:/app/examples:ro
+      - ./configs:/app/configs:ro
+      - ./testdata:/app/testdata:rw
+    environment:
+      - LOG_LEVEL=debug
+    command: ["analyze", "/app/examples/pytorch-job.yaml", "--output", "json"]
+    networks:
+      - analyzer-network
+
+  # Development environment
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: volcano-analyzer-dev
+    volumes:
+      - .:/app
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    working_dir: /app
+    environment:
+      - GO111MODULE=on
+      - CGO_ENABLED=0
+    command: ["sh", "-c", "go mod download && tail -f /dev/null"]
+    networks:
+      - analyzer-network
+
+  # Test environment with Kind cluster
+  test-cluster:
+    image: kindest/node:v1.28.0
+    container_name: kind-test-cluster
+    privileged: true
+    environment:
+      - KUBECONFIG=/etc/kubernetes/admin.conf
+    volumes:
+      - /var/lib/docker
+    networks:
+      - analyzer-network
+
+  # Prometheus for metrics (future enhancement)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: analyzer-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - analyzer-network
+
+  # Grafana for visualization (future enhancement)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: analyzer-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./configs/grafana:/etc/grafana/provisioning:ro
+    networks:
+      - analyzer-network
+
+volumes:
+  go-mod-cache:
+  go-build-cache:
+  grafana-storage:
+
+networks:
+  analyzer-network:
+    driver: bridge

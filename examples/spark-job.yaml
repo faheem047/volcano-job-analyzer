@@ -1,0 +1,113 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: spark-data-processing
+  namespace: data-processing
+  labels:
+    app: spark-processing
+    framework: spark
+    version: "3.4"
+  annotations:
+    volcano.sh/framework: spark
+    volcano.sh/job-type: batch-processing
+spec:
+  schedulerName: volcano
+  queue: default
+  minAvailable: 5
+  tasks:
+  - name: driver
+    replicas: 1
+    template:
+      metadata:
+        labels:
+          app: spark-processing
+          role: driver
+      spec:
+        restartPolicy: Never
+        containers:
+        - name: spark
+          image: apache/spark:3.4.0
+          command: ["/opt/spark/bin/spark-submit"]
+          args:
+            - "--master"
+            - "k8s://https://kubernetes.default.svc:443"
+            - "--deploy-mode"
+            - "client"
+            - "--name"
+            - "spark-data-processing"
+            - "--class"
+            - "org.apache.spark.examples.SparkPi"
+            - "--conf"
+            - "spark.executor.instances=4"
+            - "--conf"
+            - "spark.executor.cores=2"
+            - "--conf"
+            - "spark.executor.memory=4g"
+            - "/opt/spark/examples/jars/spark-examples_2.12-3.4.0.jar"
+            - "100"
+          env:
+          - name: SPARK_MASTER_URL
+            value: "k8s://https://kubernetes.default.svc:443"
+          - name: SPARK_DRIVER_HOST
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          ports:
+          - containerPort: 4040
+            name: spark-ui
+            protocol: TCP
+          - containerPort: 7077
+            name: spark-master
+            protocol: TCP
+          resources:
+            requests:
+              cpu: 2000m
+              memory: 4Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+          volumeMounts:
+          - name: spark-data
+            mountPath: /data
+        volumes:
+        - name: spark-data
+          persistentVolumeClaim:
+            claimName: spark-data-pvc
+        serviceAccount: spark-driver
+  - name: executor
+    replicas: 4
+    template:
+      metadata:
+        labels:
+          app: spark-processing
+          role: executor
+      spec:
+        restartPolicy: Never
+        containers:
+        - name: spark
+          image: apache/spark:3.4.0
+          command: ["/opt/spark/bin/spark-class"]
+          args:
+            - "org.apache.spark.executor.ExecutorBackend"
+          env:
+          - name: SPARK_EXECUTOR_CORES
+            value: "2"
+          - name: SPARK_EXECUTOR_MEMORY
+            value: "4g"
+          - name: SPARK_DRIVER_URL
+            value: "spark://spark-data-processing-driver-0:7077"
+          resources:
+            requests:
+              cpu: 2000m
+              memory: 4Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+          volumeMounts:
+          - name: spark-data
+            mountPath: /data
+        volumes:
+        - name: spark-data
+          persistentVolumeClaim:
+            claimName: spark-data-pvc
+        serviceAccount: spark-executor

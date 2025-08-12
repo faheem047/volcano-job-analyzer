@@ -1,0 +1,183 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: resource-intensive-workload
+  namespace: performance-testing
+  labels:
+    test-type: resource-intensive
+    performance-category: high-resource
+  annotations:
+    volcano.sh/framework: custom
+    volcano.sh/test-scenario: resource-limits
+spec:
+  schedulerName: volcano
+  queue: performance-queue
+  minAvailable: 20
+  tasks:
+  - name: memory-intensive-master
+    replicas: 1
+    template:
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: memory-master
+          image: ubuntu:20.04
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Starting memory-intensive master..."
+              # Simulate memory-intensive workload
+              python3 -c "
+              import time
+              import numpy as np
+              print('Allocating large arrays...')
+              arrays = []
+              for i in range(10):
+                  arr = np.random.rand(1000, 1000, 100)
+                  arrays.append(arr)
+                  print(f'Allocated array {i+1}/10')
+                  time.sleep(30)
+              print('Master task completed')
+              "
+          resources:
+            requests:
+              cpu: 16000m      # 16 CPU cores
+              memory: 64Gi     # 64GB RAM
+            limits:
+              cpu: 16000m
+              memory: 64Gi
+          env:
+          - name: PYTHONPATH
+            value: "/usr/lib/python3/dist-packages"
+
+  - name: cpu-intensive-workers
+    replicas: 8
+    template:
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: cpu-worker
+          image: ubuntu:20.04
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Starting CPU-intensive worker..."
+              # Simulate CPU-intensive workload
+              python3 -c "
+              import time
+              import math
+              import multiprocessing
+              
+              def cpu_intensive_task(n):
+                  result = 0
+                  for i in range(n):
+                      result += math.sqrt(i) * math.sin(i) * math.cos(i)
+                  return result
+              
+              print('Starting CPU-intensive computation...')
+              processes = []
+              for i in range(8):  # 8 processes per worker
+                  p = multiprocessing.Process(target=cpu_intensive_task, args=(10000000,))
+                  p.start()
+                  processes.append(p)
+              
+              for p in processes:
+                  p.join()
+              
+              print('Worker task completed')
+              "
+          resources:
+            requests:
+              cpu: 8000m       # 8 CPU cores per worker
+              memory: 16Gi     # 16GB RAM per worker
+            limits:
+              cpu: 8000m
+              memory: 16Gi
+
+  - name: gpu-intensive-processors
+    replicas: 4
+    template:
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: gpu-processor
+          image: tensorflow/tensorflow:latest-gpu
+          command: ["python3", "-c"]
+          args:
+            - |
+              import tensorflow as tf
+              import time
+              import numpy as np
+              
+              print("GPU availability:", tf.config.list_physical_devices('GPU'))
+              
+              # Create large tensors for GPU computation
+              with tf.device('/GPU:0'):
+                  print("Creating large matrices...")
+                  a = tf.random.normal([10000, 10000])
+                  b = tf.random.normal([10000, 10000])
+                  
+                  print("Starting matrix multiplication...")
+                  for i in range(100):
+                      c = tf.matmul(a, b)
+                      if i % 10 == 0:
+                          print(f"Iteration {i}/100 completed")
+                      time.sleep(1)
+              
+              print("GPU processor task completed")
+          resources:
+            requests:
+              cpu: 4000m       # 4 CPU cores
+              memory: 32Gi     # 32GB RAM
+              nvidia.com/gpu: 2 # 2 GPUs per processor
+            limits:
+              cpu: 4000m
+              memory: 32Gi
+              nvidia.com/gpu: 2
+
+  - name: storage-intensive-handlers
+    replicas: 2
+    template:
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: storage-handler
+          image: ubuntu:20.04
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Starting storage-intensive operations..."
+              
+              # Create large files
+              for i in {1..10}; do
+                  echo "Creating file $i/10..."
+                  dd if=/dev/urandom of="/tmp/large_file_$i.dat" bs=1M count=1000
+                  sync
+              done
+              
+              # Perform I/O operations
+              for i in {1..100}; do
+                  echo "I/O operation $i/100..."
+                  find /tmp -name "*.dat" -exec wc -c {} \; > /dev/null
+                  sleep 5
+              done
+              
+              # Cleanup
+              rm -f /tmp/large_file_*.dat
+              echo "Storage handler task completed"
+          resources:
+            requests:
+              cpu: 2000m       # 2 CPU cores
+              memory: 8Gi      # 8GB RAM
+              ephemeral-storage: 50Gi # 50GB temporary storage
+            limits:
+              cpu: 2000m
+              memory: 8Gi
+              ephemeral-storage: 50Gi
+          volumeMounts:
+          - name: temp-storage
+            mountPath: /tmp
+        volumes:
+        - name: temp-storage
+          emptyDir:
+            sizeLimit: 50Gi

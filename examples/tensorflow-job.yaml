@@ -1,0 +1,167 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: tensorflow-distributed-training
+  namespace: ml-training
+  labels:
+    app: tensorflow-training
+    framework: tensorflow
+    version: "2.11"
+  annotations:
+    volcano.sh/framework: tensorflow
+    volcano.sh/job-type: distributed-training
+spec:
+  schedulerName: volcano
+  queue: gpu-queue
+  minAvailable: 9
+  tasks:
+  - name: chief
+    replicas: 1
+    template:
+      metadata:
+        labels:
+          app: tensorflow-training
+          role: chief
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: tensorflow
+          image: tensorflow/tensorflow:2.11.0-gpu
+          command: ["python"]
+          args:
+            - "/workspace/train.py"
+            - "--job-name=chief"
+            - "--task-index=0"
+          env:
+          - name: TF_CONFIG
+            value: |
+              {
+                "cluster": {
+                  "chief": ["tensorflow-distributed-training-chief-0:2222"],
+                  "worker": ["tensorflow-distributed-training-worker-0:2222", "tensorflow-distributed-training-worker-1:2222", "tensorflow-distributed-training-worker-2:2222", "tensorflow-distributed-training-worker-3:2222", "tensorflow-distributed-training-worker-4:2222", "tensorflow-distributed-training-worker-5:2222"],
+                  "ps": ["tensorflow-distributed-training-ps-0:2222", "tensorflow-distributed-training-ps-1:2222"]
+                },
+                "task": {"type": "chief", "index": 0}
+              }
+          ports:
+          - containerPort: 2222
+            name: tf-port
+            protocol: TCP
+          resources:
+            requests:
+              cpu: 8000m
+              memory: 16Gi
+              nvidia.com/gpu: 2
+            limits:
+              cpu: 8000m
+              memory: 16Gi
+              nvidia.com/gpu: 2
+          volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: data
+            mountPath: /data
+        volumes:
+        - name: workspace
+          configMap:
+            name: tensorflow-training-code
+        - name: data
+          persistentVolumeClaim:
+            claimName: training-data-pvc
+  - name: worker
+    replicas: 6
+    template:
+      metadata:
+        labels:
+          app: tensorflow-training
+          role: worker
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: tensorflow
+          image: tensorflow/tensorflow:2.11.0-gpu
+          command: ["python"]
+          args:
+            - "/workspace/train.py"
+            - "--job-name=worker"
+          env:
+          - name: TF_CONFIG
+            value: |
+              {
+                "cluster": {
+                  "chief": ["tensorflow-distributed-training-chief-0:2222"],
+                  "worker": ["tensorflow-distributed-training-worker-0:2222", "tensorflow-distributed-training-worker-1:2222", "tensorflow-distributed-training-worker-2:2222", "tensorflow-distributed-training-worker-3:2222", "tensorflow-distributed-training-worker-4:2222", "tensorflow-distributed-training-worker-5:2222"],
+                  "ps": ["tensorflow-distributed-training-ps-0:2222", "tensorflow-distributed-training-ps-1:2222"]
+                },
+                "task": {"type": "worker", "index": 0}
+              }
+          ports:
+          - containerPort: 2222
+            name: tf-port
+            protocol: TCP
+          resources:
+            requests:
+              cpu: 4000m
+              memory: 8Gi
+              nvidia.com/gpu: 1
+            limits:
+              cpu: 4000m
+              memory: 8Gi
+              nvidia.com/gpu: 1
+          volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: data
+            mountPath: /data
+        volumes:
+        - name: workspace
+          configMap:
+            name: tensorflow-training-code
+        - name: data
+          persistentVolumeClaim:
+            claimName: training-data-pvc
+  - name: ps
+    replicas: 2
+    template:
+      metadata:
+        labels:
+          app: tensorflow-training
+          role: ps
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: tensorflow
+          image: tensorflow/tensorflow:2.11.0-gpu
+          command: ["python"]
+          args:
+            - "/workspace/train.py"
+            - "--job-name=ps"
+          env:
+          - name: TF_CONFIG
+            value: |
+              {
+                "cluster": {
+                  "chief": ["tensorflow-distributed-training-chief-0:2222"],
+                  "worker": ["tensorflow-distributed-training-worker-0:2222", "tensorflow-distributed-training-worker-1:2222", "tensorflow-distributed-training-worker-2:2222", "tensorflow-distributed-training-worker-3:2222", "tensorflow-distributed-training-worker-4:2222", "tensorflow-distributed-training-worker-5:2222"],
+                  "ps": ["tensorflow-distributed-training-ps-0:2222", "tensorflow-distributed-training-ps-1:2222"]
+                },
+                "task": {"type": "ps", "index": 0}
+              }
+          ports:
+          - containerPort: 2222
+            name: tf-port
+            protocol: TCP
+          resources:
+            requests:
+              cpu: 2000m
+              memory: 4Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+          volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+        volumes:
+        - name: workspace
+          configMap:
+            name: tensorflow-training-code

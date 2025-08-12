@@ -1,0 +1,326 @@
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: edge-case-scenarios
+  namespace: edge-testing
+  labels:
+    test-type: edge-cases
+    complexity: high
+  annotations:
+    volcano.sh/framework: multi
+    volcano.sh/test-purpose: edge-case-validation
+spec:
+  schedulerName: volcano
+  queue: edge-queue
+  minAvailable: 15
+  tasks:
+  # Task with minimal resources
+  - name: minimal-resource-task
+    replicas: 5
+    template:
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: minimal-container
+          image: alpine:latest
+          command: ["sh", "-c", "echo 'Minimal task running'; sleep 60; echo 'Minimal task completed'"]
+          resources:
+            requests:
+              cpu: 10m         # 0.01 CPU
+              memory: 16Mi     # 16MB RAM
+            limits:
+              cpu: 50m         # 0.05 CPU
+              memory: 64Mi     # 64MB RAM
+
+  # Task with custom resources
+  - name: custom-resource-task
+    replicas: 1
+    template:
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: custom-container
+          image: ubuntu:20.04
+          command: ["sh", "-c", "echo 'Custom resource task'; sleep 120; echo 'Custom task completed'"]
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 2Gi
+              example.com/fpga: 1    # Custom FPGA resource
+              example.com/storage-class-ssd: 100Gi  # Custom storage
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+              example.com/fpga: 1
+              example.com/storage-class-ssd: 100Gi
+
+  # Task with many small replicas
+  - name: many-replicas-task
+    replicas: 50
+    template:
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: small-replica
+          image: busybox:latest
+          command: ["sh", "-c"]
+          args:
+            - |
+              REPLICA_ID=${HOSTNAME##*-}
+              echo "Replica $REPLICA_ID starting..."
+              # Simulate different workload based on replica ID
+              SLEEP_TIME=$((10 + REPLICA_ID % 30))
+              sleep $SLEEP_TIME
+              echo "Replica $REPLICA_ID completed after ${SLEEP_TIME}s"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
+  # Task with complex dependencies
+  - name: dependency-coordinator
+    replicas: 1
+    template:
+      spec:
+        restartPolicy: OnFailure
+        initContainers:
+        - name: wait-for-workers
+          image: busybox:latest
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Waiting for worker tasks to be ready..."
+              for i in {1..60}; do
+                # In real scenario, this would check for actual worker readiness
+                echo "Check $i/60: Waiting for workers..."
+                sleep 5
+              done
+              echo "Workers should be ready now"
+        - name: setup-coordination
+          image: busybox:latest
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Setting up coordination mechanisms..."
+              mkdir -p /shared/coordination
+              echo "coordinator-ready" > /shared/coordination/status
+              echo "Coordination setup completed"
+          volumeMounts:
+          - name: shared-data
+            mountPath: /shared
+        containers:
+        - name: coordinator
+          image: alpine:latest
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Coordinator starting..."
+              echo "Reading coordination status..."
+              cat /shared/coordination/status
+              
+              # Simulate coordination work
+              for i in {1..30}; do
+                echo "Coordination cycle $i/30"
+                echo "cycle-$i-$(date)" >> /shared/coordination/log
+                sleep 10
+              done
+              
+              echo "Coordinator completed"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+          volumeMounts:
+          - name: shared-data
+            mountPath: /shared
+        volumes:
+        - name: shared-data
+          emptyDir: {}
+
+  # Task with unusual port configuration
+  - name: multi-port-service
+    replicas: 2
+    template:
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: multi-port-server
+          image: python:3.9-slim
+          command: ["python3", "-c"]
+          args:
+            - |
+              import socketserver
+              import threading
+              import time
+              from http.server import HTTPServer, SimpleHTTPRequestHandler
+              
+              # Start multiple servers on different ports
+              def start_server(port):
+                  print(f"Starting server on port {port}")
+                  try:
+                      httpd = HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
+                      httpd.serve_forever()
+                  except Exception as e:
+                      print(f"Server on port {port} failed: {e}")
+              
+              ports = [8080, 8081, 8082, 8083, 8084]
+              threads = []
+              
+              for port in ports:
+                  thread = threading.Thread(target=start_server, args=(port,))
+                  thread.daemon = True
+                  thread.start()
+                  threads.append(thread)
+              
+              print("All servers started")
+              time.sleep(300)  # Run for 5 minutes
+              print("Shutting down servers")
+          ports:
+          - containerPort: 8080
+            name: http-primary
+            protocol: TCP
+          - containerPort: 8081
+            name: http-secondary
+            protocol: TCP
+          - containerPort: 8082
+            name: metrics
+            protocol: TCP
+          - containerPort: 8083
+            name: health
+            protocol: TCP
+          - containerPort: 8084
+            name: debug
+            protocol: TCP
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+
+  # Task with security constraints
+  - name: security-constrained-task
+    replicas: 1
+    template:
+      spec:
+        restartPolicy: OnFailure
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 2000
+          fsGroup: 3000
+          seccompProfile:
+            type: RuntimeDefault
+        containers:
+        - name: secure-container
+          image: alpine:latest
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Running with security constraints..."
+              echo "User ID: $(id -u)"
+              echo "Group ID: $(id -g)"
+              echo "Groups: $(id -G)"
+              
+              # Test file permissions
+              touch /tmp/test-file
+              ls -la /tmp/test-file
+              
+              echo "Security test completed"
+              sleep 60
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+              - ALL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          volumeMounts:
+          - name: tmp-volume
+            mountPath: /tmp
+        volumes:
+        - name: tmp-volume
+          emptyDir: {}
+
+  # Task with environment variable complexity
+  - name: env-complex-task
+    replicas: 3
+    template:
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: env-container
+          image: busybox:latest
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "=== Environment Variables ==="
+              env | sort
+              echo "=== Pod Information ==="
+              echo "Pod Name: $POD_NAME"
+              echo "Pod Namespace: $POD_NAMESPACE"
+              echo "Pod IP: $POD_IP"
+              echo "Node Name: $NODE_NAME"
+              echo "=== Custom Variables ==="
+              echo "Job Type: $JOB_TYPE"
+              echo "Task Role: $TASK_ROLE"
+              echo "Replica Index: $REPLICA_INDEX"
+              sleep 180
+          env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: JOB_TYPE
+            value: "edge-case-testing"
+          - name: TASK_ROLE
+            value: "environment-validator"
+          - name: REPLICA_INDEX
+            value: "auto-assigned"
+          - name: COMPLEX_CONFIG
+            value: |
+              {
+                "database": {
+                  "host": "localhost",
+                  "port": 5432,
+                  "ssl": true
+                },
+                "cache": {
+                  "redis": {
+                    "cluster": ["redis-1:6379", "redis-2:6379"],
+                    "timeout": 5000
+                  }
+                }
+              }
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 300m
+              memory: 512Mi
