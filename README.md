@@ -31,10 +31,30 @@ go install github.com/faheem047/volcano-job-analyzer@latest
 ```
 
 ### Docker
+
+#### Build from source
 ```bash
 docker build -t volcano-job-analyzer:local .
 docker run --rm -v $PWD:/work -w /work volcano-job-analyzer:local --help
 ```
+
+#### Pull from Docker Hub
+```bash
+# Pull the latest version
+docker pull faheem047/volcano-job-analyzer:main
+
+# Run with volume mount for job files
+docker run --rm -v $PWD:/work -w /work faheem047/volcano-job-analyzer:main analyze examples/pytorch-job.yaml
+
+# Run with specific version tag
+docker run --rm -v $PWD:/work -w /work faheem047/volcano-job-analyzer:latest analyze examples/tensorflow-job.yaml
+```
+
+**Available Docker Hub Images:**
+- **Repository:** `faheem047/volcano-job-analyzer`
+- **Tags:** `main`, `develop`, `latest`
+- **Platforms:** `linux/amd64`, `linux/arm64`
+- **Base Image:** Alpine Linux (lightweight)
 
 ---
 
@@ -192,12 +212,33 @@ docker-compose up dev
 
 ---
 
+## CI/CD & Docker Hub
+
+This project includes a comprehensive CI/CD pipeline that automatically:
+
+- **Builds and tests** on every push to main/develop branches
+- **Creates multi-architecture Docker images** (Linux AMD64/ARM64)
+- **Publishes to Docker Hub** under `faheem047/volcano-job-analyzer`
+- **Runs integration tests** with Volcano cluster setup
+- **Generates release artifacts** for all supported platforms
+
+**Docker Hub Integration:**
+- **Automated builds** on every commit
+- **Multi-platform support** for Linux AMD64 and ARM64
+- **Tagged releases** for main branch, develop branch, and releases
+- **Lightweight Alpine-based images** optimized for production use
+
+**CI Status:** ![CI](https://github.com/faheem047/volcano-job-analyzer/workflows/CI/badge.svg)
+
+---
+
 ## Troubleshooting
 
 - "failed to load configuration": check `--config` path and YAML syntax
 - No placement shown: ensure `clusterProfilesPath` is set in config
 - Lint tool missing: install with `go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest`
 - Windows paths: quote file paths containing spaces
+- Docker pull fails: ensure you have access to `faheem047/volcano-job-analyzer` repository
 
 ---
 
