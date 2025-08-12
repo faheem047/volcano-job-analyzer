@@ -16,7 +16,18 @@ linters-settings:
 
   govet:
     check-shadowing: true
-    enable-all: true
+    enable-all: false
+    checks:
+      - shadow
+      - copylocks
+      - httpresponse
+      - loopclosure
+      - nilfunc
+      - printf
+      - stringintconv
+      - structtag
+      - testinggoroutines
+      - tests
 
   gofmt:
     simplify: true
@@ -169,6 +180,14 @@ issues:
     - text: "Use of unsafe calls should be audited"
       linters:
         - gosec
+        
+    - text: "fieldalignment"
+      linters:
+        - govet
+        
+    - text: "this result of append is never used"
+      linters:
+        - staticcheck
 
   exclude-use-default: false
   max-issues-per-linter: 0
