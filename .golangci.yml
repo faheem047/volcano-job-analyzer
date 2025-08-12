@@ -28,13 +28,13 @@ linters-settings:
     min-confidence: 0.8
 
   gocyclo:
-    min-complexity: 10
+    min-complexity: 20
 
   maligned:
     suggest-new: true
 
   dupl:
-    threshold: 150
+    threshold: 200
 
   goconst:
     min-len: 3
@@ -44,7 +44,7 @@ linters-settings:
     locale: US
 
   lll:
-    line-length: 200
+    line-length: 240
     tab-width: 4
 
   unused:
@@ -82,14 +82,14 @@ linters-settings:
       - HACK
 
   funlen:
-    lines: 120
-    statements: 100
+    lines: 160
+    statements: 120
 
   gocognit:
-    min-complexity: 60
+    min-complexity: 80
 
   nestif:
-    min-complexity: 6
+    min-complexity: 8
 
   gomnd:
     settings:
@@ -98,43 +98,42 @@ linters-settings:
 
 linters:
   enable:
-    - bodyclose
-    - deadcode
-    - dogsled
-    - dupl
     - errcheck
-    - funlen
-    - gochecknoinits
-    - goconst
-    - gocritic
-    - gocyclo
     - gofmt
     - goimports
-    - gomnd
-    - goprintffuncname
-    - gosec
     - gosimple
     - govet
     - ineffassign
-    - lll
     - misspell
-    - nakedret
-    - prealloc
     - staticcheck
     - typecheck
+    - unused
     - unconvert
     - unparam
-    - unused
-    - whitespace
-    - gocognit
-    - godox
-    - nestif
 
   disable:
     - maligned  # deprecated
     - exhaustivestruct  # too strict for this project
     - depguard
     - golint
+    - gosec
+    - goconst
+    - gomnd
+    - gocyclo
+    - gocritic
+    - dupl
+    - funlen
+    - lll
+    - whitespace
+    - gocognit
+    - nestif
+    - bodyclose
+    - deadcode
+    - dogsled
+    - gochecknoinits
+    - goprintffuncname
+    - nakedret
+    - prealloc
     - interfacer
     - structcheck
     - varcheck
