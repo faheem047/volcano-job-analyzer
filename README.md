@@ -11,7 +11,7 @@ Volcano is a batch scheduling system for Kubernetes designed for high‑performa
 - **Network & Scalability**: Communication pattern, latency sensitivity, and scaling characteristics
 - **Multi‑Cluster Placement**: Strategy selection, cluster scoring, anti‑affinity, resource distribution
 - **Optimization Hints**: Cost/performance recommendations from analysis results
-- **Flexible Output**: Human‑readable table, JSON, or YAML
+- **Flexible Output**: Human‑readable table, JSON, oand YAML
 
 ---
 
